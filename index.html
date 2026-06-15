@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Slop Detective</title>
+
+<style>
+:root{
+--bg:#0f172a;
+--panel:#1e293b;
+--panel2:#334155;
+--text:#ffffff;
+--accent:#38bdf8;
+--success:#22c55e;
+--danger:#991b1b;
+--warning:#f59e0b;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+font-family:Arial,sans-serif;
+background:var(--bg);
+color:var(--text);
+padding:20px;
+}
+
+.wrapper{
+max-width:1100px;
+margin:auto;
+}
+
+.card{
+background:var(--panel);
+border-radius:16px;
+padding:24px;
+}
+
+.header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:20px;
+flex-wrap:wrap;
+margin-bottom:20px;
+}
+
+.progress-container{
+height:12px;
+background:#111827;
+border-radius:999px;
+overflow:hidden;
+margin-bottom:20px;
+}
+
+.progress-bar{
+height:100%;
+width:0%;
+background:var(--accent);
+transition:0.4s;
+}
+
+.image-container{
+position:relative;
+width:100%;
+margin-bottom:20px;
+}
+
+.image-container img{
+width:100%;
+border-radius:12px;
+display:block;
+}
+
+.hotspot{
+position:absolute;
+width:24px;
+height:24px;
+border:none;
+border-radius:50%;
+background:#00ffff;
+cursor:pointer;
+display:none;
+box-shadow:0 0 10px #00ffff,0 0 25px #00ffff;
+animation:pulse 1.5s infinite;
+}
+
+@keyframes pulse{
+0%{transform:scale(1)}
+50%{transform:scale(1.25)}
+100%{transform:scale(1)}
+}
+
+.buttons{
+display:flex;
+gap:12px;
+flex-wrap:wrap;
+}
+
+button{
+padding:14px 18px;
+border:none;
+border-radius:10px;
+font-size:16px;
+cursor:pointer;
+}
+
+.real-btn{background:#475569;color:white;}
+.ai-btn{background:var(--danger);color:white;}
+.next-btn{background:var(--accent);display:none;}
+.teacher-btn{background:var(--warning);}
+
+.result-box{
+display:none;
+margin-top:16px;
+padding:16px;
+border-radius:10px;
+background:var(--panel2);
+}
+
+.correct{border-left:6px solid var(--success);}
+.incorrect{border-left:6px solid #ef4444;}
+
+.tooltip{
+position:fixed;
+display:none;
+background:#111827;
+padding:12px;
+border-radius:8px;
+max-width:260px;
+z-index:9999;
+border:1px solid var(--accent);
+}
+
+.end-screen{
+display:none;
+text-align:center;
+padding:40px 0;
+}
+
+.level-editor{
+margin-top:30px;
+background:#111827;
+padding:16px;
+border-radius:12px;
+}
+
+.level-editor code{
+display:block;
+white-space:pre-wrap;
+color:#93c5fd;
+}
+
+@media(max-width:768px){
+.buttons{
+flex-direction:column;
+}
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrapper">
+<div class="card">
+
+<div class="header">
+<h1>🕵️ AI Slop Detective</h1>
+<div>Level <span id="levelNum">1</span> / <span id="totalLevels">5</span></div>
+<div>Score: <span id="score">0</span></div>
+</div>
+
+<div class="progress-container">
+<div class="progress-bar" id="progressBar"></div>
+</div>
+
+<button class="teacher-btn" id="teacherModeBtn">
+Teacher Mode: OFF
+</button>
+
+<br><br>
+
+<div class="image-container" id="imageContainer">
+<img id="gameImage" src="">
+</div>
+
+<div class="buttons">
+<button class="real-btn" id="realBtn">📸 Real Photo</button>
+<button class="ai-btn" id="aiBtn">🤖 AI Slop</button>
+<button class="next-btn" id="nextBtn">Next Level ➜</button>
+</div>
+
+<div id="resultBox" class="result-box"></div>
+
+<div id="endScreen" class="end-screen">
+<h2>🎉 Investigation Complete</h2>
+<h3 id="finalScore"></h3>
+<button onclick="restartGame()">Play Again</button>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<div class="level-editor">
+<h3>Level Data Template</h3>
+<p>Replace placeholder images and hotspot coordinates below.</p>
+<code>
+imgUrl: "YOUR_IMAGE_URL_HERE"
+isAI: true or false
+
+hotspots:[
+{{top:40,left:55,note:"Example issue"}}
+]
+</code>
+</div>
+
+</div>
+</div>
+
+<script>
+
+const levels = [
+
+{
+id:1,
+imgUrl:"https://picsum.photos/1001/650",
+isAI:true,
+rationale:"Placeholder AI image. Replace with your own explanation.",
+hotspots:[
+{top:35,left:65,note:"Example issue 1"},
+{top:60,left:30,note:"Example issue 2"}
+]
+},
+
+{
+id:2,
+imgUrl:"https://picsum.photos/1002/650",
+isAI:false,
+rationale:"Placeholder real photograph.",
+hotspots:[]
+},
+
+{
+id:3,
+imgUrl:"https://picsum.photos/1003/650",
+isAI:true,
+rationale:"Placeholder AI image.",
+hotspots:[
+{top:42,left:48,note:"Replace hotspot note"}
+]
+},
+
+{
+id:4,
+imgUrl:"https://picsum.photos/1004/650",
+isAI:false,
+rationale:"Placeholder real photograph.",
+hotspots:[]
+},
+
+{
+id:5,
+imgUrl:"https://picsum.photos/1005/650",
+isAI:true,
+rationale:"Placeholder AI image.",
+hotspots:[
+{top:50,left:50,note:"Replace hotspot note"}
+]
+}
+
+];
+
+let currentLevel=0;
+let score=0;
+let teacherMode=false;
+
+const gameImage=document.getElementById("gameImage");
+const imageContainer=document.getElementById("imageContainer");
+const resultBox=document.getElementById("resultBox");
+const nextBtn=document.getElementById("nextBtn");
+const tooltip=document.getElementById("tooltip");
+
+document.getElementById("totalLevels").textContent=levels.length;
+
+function updateProgress(){
+const percent=((currentLevel)/levels.length)*100;
+document.getElementById("progressBar").style.width=percent+"%";
+}
+
+function clearHotspots(){
+document.querySelectorAll(".hotspot").forEach(x=>x.remove());
+}
+
+function showTooltip(text,x,y){
+tooltip.innerHTML=text;
+tooltip.style.left=(x+15)+"px";
+tooltip.style.top=(y+15)+"px";
+tooltip.style.display="block";
+}
+
+function createHotspots(data){
+
+data.forEach(h=>{
+
+const dot=document.createElement("button");
+dot.className="hotspot";
+
+dot.style.top=h.top+"%";
+dot.style.left=h.left+"%";
+
+dot.style.display="block";
+
+dot.addEventListener("click",(e)=>{
+showTooltip(h.note,e.pageX,e.pageY);
+});
+
+imageContainer.appendChild(dot);
+
+});
+}
+
+function loadLevel(){
+
+clearHotspots();
+
+tooltip.style.display="none";
+
+const level=levels[currentLevel];
+
+gameImage.src=level.imgUrl;
+
+document.getElementById("levelNum").textContent=currentLevel+1;
+
+resultBox.style.display="none";
+nextBtn.style.display="none";
+
+realBtn.style.display="inline-block";
+aiBtn.style.display="inline-block";
+
+if(teacherMode && level.isAI){
+createHotspots(level.hotspots);
+}
+
+updateProgress();
+}
+
+function submitGuess(playerGuess){
+
+const level=levels[currentLevel];
+
+const correct=(playerGuess===level.isAI);
+
+if(correct) score++;
+
+document.getElementById("score").textContent=score;
+
+resultBox.className="result-box " + (correct ? "correct":"incorrect");
+
+resultBox.innerHTML=
+"<strong>"+
+(correct ? "✅ Correct":"❌ Incorrect")+
+"</strong><br><br>"+
+level.rationale;
+
+resultBox.style.display="block";
+
+realBtn.style.display="none";
+aiBtn.style.display="none";
+nextBtn.style.display="inline-block";
+
+if(level.isAI){
+createHotspots(level.hotspots);
+}
+}
+
+function nextLevel(){
+
+currentLevel++;
+
+if(currentLevel>=levels.length){
+
+document.getElementById("progressBar").style.width="100%";
+
+document.querySelector(".buttons").style.display="none";
+gameImage.style.display="none";
+resultBox.style.display="none";
+
+document.getElementById("finalScore").innerHTML=
+"Final Score: "+score+" / "+levels.length;
+
+document.getElementById("endScreen").style.display="block";
+
+return;
+}
+
+loadLevel();
+}
+
+function restartGame(){
+
+currentLevel=0;
+score=0;
+
+document.getElementById("score").textContent=0;
+
+document.querySelector(".buttons").style.display="flex";
+
+document.getElementById("endScreen").style.display="none";
+
+gameImage.style.display="block";
+
+loadLevel();
+}
+
+teacherModeBtn.addEventListener("click",()=>{
+
+teacherMode=!teacherMode;
+
+teacherModeBtn.innerHTML=
+"Teacher Mode: "+(teacherMode ? "ON":"OFF");
+
+loadLevel();
+
+});
+
+realBtn.onclick=()=>submitGuess(false);
+aiBtn.onclick=()=>submitGuess(true);
+nextBtn.onclick=nextLevel;
+
+document.addEventListener("click",(e)=>{
+if(!e.target.classList.contains("hotspot")){
+tooltip.style.display="none";
+}
+});
+
+loadLevel();
+
+</script>
+
+</body>
+</html>
